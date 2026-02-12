@@ -121,6 +121,37 @@ app.post('/send-emails', upload.array('attachments', 10), async (req, res) => {
     }
 });
 
+// Template endpoints
+app.get('/api/templates', (req, res) => {
+    // For now, return hardcoded list or scan directory
+    res.json([
+        { id: 'artemis-sponsorship', name: 'Artemis Sponsorship' }
+    ]);
+});
+
+app.get('/api/template/:name', (req, res) => {
+    const templateName = req.params.name;
+    try {
+        const template = require(`./templates/${templateName}.json`);
+        res.json(template);
+    } catch (error) {
+        res.status(404).json({ error: 'Template not found' });
+    }
+});
+
+app.get('/api/template-attachment/:filename', (req, res) => {
+    const filename = req.params.filename;
+    const path = require('path');
+    const fs = require('fs');
+    const filePath = path.join(__dirname, 'templates', 'attachments', filename);
+
+    if (fs.existsSync(filePath)) {
+        res.download(filePath);
+    } else {
+        res.status(404).json({ error: 'Attachment not found' });
+    }
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
     const isConfigured = !!(process.env.EMAIL_USER && process.env.EMAIL_PASSWORD);

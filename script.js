@@ -12,6 +12,78 @@ const closeModal = document.getElementById('closeModal');
 const fileUploadArea = document.getElementById('fileUploadArea');
 const fileInput = document.getElementById('attachments');
 const fileList = document.getElementById('fileList');
+const templateCheckbox = document.getElementById('templateCheckbox');
+
+// Template Handling
+let previousSubject = '';
+let previousMessage = '';
+
+templateCheckbox.addEventListener('change', async (e) => {
+    if (e.target.checked) {
+        // Save current values before overwriting
+        previousSubject = subjectInput.value;
+        previousMessage = messageInput.value;
+
+        try {
+            // Show loading state
+            subjectInput.value = 'Loading template...';
+            messageInput.value = 'Loading template...';
+            subjectInput.disabled = true;
+            messageInput.disabled = true;
+
+            // Fetch template data
+            const response = await fetch('/api/template/artemis-sponsorship');
+            if (!response.ok) throw new Error('Failed to load template');
+
+            const template = await response.json();
+
+            // Apply template
+            subjectInput.value = template.subject;
+            messageInput.value = template.message;
+
+            // Handle attachments
+            if (template.attachments && template.attachments.length > 0) {
+                // We need to fetch the file blob to create a File object
+                const attachmentPath = template.attachments[0]; // Assuming first one for now
+                const filename = attachmentPath.split('/').pop();
+
+                try {
+                    const fileResponse = await fetch(`/api/template-attachment/${filename}`);
+                    if (fileResponse.ok) {
+                        const blob = await fileResponse.blob();
+                        const file = new File([blob], filename, { type: 'application/pdf' });
+
+                        // Add to selected files
+                        selectedFiles.push(file);
+                        displayFiles();
+                    }
+                } catch (err) {
+                    console.error('Error loading attachment:', err);
+                }
+            }
+        } catch (error) {
+            console.error('Template error:', error);
+            showStatus('Failed to load template', 'error');
+            // Revert on error
+            subjectInput.value = previousSubject;
+            messageInput.value = previousMessage;
+            e.target.checked = false;
+        } finally {
+            subjectInput.disabled = false;
+            messageInput.disabled = false;
+        }
+    } else {
+        // Restore previous values or clear if empty
+        subjectInput.value = previousSubject;
+        messageInput.value = previousMessage;
+
+        // Optionally remove the template attachment if it's the only one?
+        // For simplicity, we'll keep the files or maybe we should remove specifically the template file
+        // Let's filter out the specific template file
+        selectedFiles = selectedFiles.filter(f => f.name !== 'artemis-sponsorship.pdf');
+        displayFiles();
+    }
+});
 
 // Selected files storage
 let selectedFiles = [];
