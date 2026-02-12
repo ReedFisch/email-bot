@@ -148,11 +148,23 @@ app.get('/api/template/:name', (req, res) => {
     }
 });
 
-app.post('/api/template/:name', (req, res) => {
+app.post('/api/template/:name', upload.array('newAttachments', 10), (req, res) => {
     const templateName = req.params.name;
     const { subject, message } = req.body;
+    let existingAttachments = req.body.existingAttachments || [];
+    const newFiles = req.files || [];
     const fs = require('fs');
     const path = require('path');
+
+    // Parse existingAttachments if it came as a JSON string or single string
+    if (typeof existingAttachments === 'string') {
+        try {
+            existingAttachments = JSON.parse(existingAttachments);
+        } catch (e) {
+            existingAttachments = [existingAttachments];
+        }
+    }
+    if (!Array.isArray(existingAttachments)) existingAttachments = [];
 
     // Validate input
     if (!subject || !message) {
@@ -161,24 +173,46 @@ app.post('/api/template/:name', (req, res) => {
 
     try {
         const filePath = path.join(__dirname, 'templates', `${templateName}.json`);
+        const attachmentsDir = path.join(__dirname, 'templates', 'attachments');
 
-        // Read existing template to preserve attachments
+        // Ensure attachments directory exists
+        if (!fs.existsSync(attachmentsDir)) {
+            fs.mkdirSync(attachmentsDir, { recursive: true });
+        }
+
+        // Read existing template
         let template = {};
         if (fs.existsSync(filePath)) {
             const fileData = fs.readFileSync(filePath, 'utf8');
             template = JSON.parse(fileData);
         }
 
-        // Update fields
+        // Process new files
+        const savedNewAttachments = newFiles.map(file => {
+            const targetPath = path.join(attachmentsDir, file.originalname);
+            fs.writeFileSync(targetPath, file.buffer);
+            return `templates/attachments/${file.originalname}`;
+        });
+
+        // Combine attachments (existing + new)
+        // Filter existingAttachments to only include valid relative paths to prevent security issues
+        const validExisting = existingAttachments.filter(p => p.startsWith('templates/attachments/'));
+
         template.subject = subject;
         template.message = message;
+        template.attachments = [...validExisting, ...savedNewAttachments];
+
         // Ensure name is set if missing
         if (!template.name) template.name = 'Custom Template';
 
         // Write back to file
         fs.writeFileSync(filePath, JSON.stringify(template, null, 2));
 
-        res.json({ success: true, message: 'Template saved successfully' });
+        res.json({
+            success: true,
+            message: 'Template and attachments saved successfully',
+            attachments: template.attachments
+        });
     } catch (error) {
         console.error('Error saving template:', error);
         res.status(500).json({ error: 'Failed to save template' });

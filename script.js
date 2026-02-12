@@ -39,15 +39,43 @@ function triggerAutoSave() {
         if (!subject || !message) return;
 
         try {
+            const formData = new FormData();
+            formData.append('subject', subject);
+            formData.append('message', message);
+
+            selectedFiles.forEach(file => {
+                if (file.path) {
+                    formData.append('existingAttachments', file.path);
+                } else {
+                    formData.append('newAttachments', file);
+                }
+            });
+
             const response = await fetch('/api/template/artemis-sponsorship', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ subject, message })
+                body: formData
             });
 
             if (response.ok) {
+                const result = await response.json();
+
+                // Update selectedFiles to mark uploaded files as existing
+                if (result.attachments) {
+                    selectedFiles = selectedFiles.map(file => {
+                        // If file was a new upload, it now has a path
+                        if (!file.path) {
+                            return {
+                                name: file.name,
+                                size: file.size,
+                                type: file.type,
+                                path: `templates/attachments/${file.name}`,
+                                // Keep original blob if needed, or structured object
+                            };
+                        }
+                        return file;
+                    });
+                }
+
                 saveStatus.textContent = 'Changes saved';
                 saveStatus.className = 'save-status saved';
                 // Clear saved status after 3 seconds
@@ -98,23 +126,28 @@ templateCheckbox.addEventListener('change', async (e) => {
 
             // Handle attachments
             if (template.attachments && template.attachments.length > 0) {
-                // We need to fetch the file blob to create a File object
-                const attachmentPath = template.attachments[0]; // Assuming first one for now
-                const filename = attachmentPath.split('/').pop();
+                // Clear current files first? Or append? 
+                // Usually template load replaces state, so let's clear (but previous state wasn't saved for files...)
+                // For now, let's append to avoid data loss, or clear if empty.
+                // Actually, typically regular users want template to SET the state.
+                selectedFiles = [];
 
-                try {
-                    const fileResponse = await fetch(`/api/template-attachment/${filename}`);
-                    if (fileResponse.ok) {
-                        const blob = await fileResponse.blob();
-                        const file = new File([blob], filename, { type: 'application/pdf' });
-
-                        // Add to selected files
-                        selectedFiles.push(file);
-                        displayFiles();
+                for (const attachmentPath of template.attachments) {
+                    const filename = attachmentPath.split('/').pop();
+                    try {
+                        const fileResponse = await fetch(`/api/template-attachment/${filename}`);
+                        if (fileResponse.ok) {
+                            const blob = await fileResponse.blob();
+                            // Create File object but mark with path so we know it's existing
+                            const file = new File([blob], filename, { type: fileResponse.headers.get('content-type') || 'application/octet-stream' });
+                            file.path = attachmentPath; // Mark as existing
+                            selectedFiles.push(file);
+                        }
+                    } catch (err) {
+                        console.error('Error loading attachment:', err);
                     }
-                } catch (err) {
-                    console.error('Error loading attachment:', err);
                 }
+                displayFiles();
             }
         } catch (error) {
             console.error('Template error:', error);
@@ -128,14 +161,12 @@ templateCheckbox.addEventListener('change', async (e) => {
             messageInput.disabled = false;
         }
     } else {
-        // Restore previous values or clear if empty
+        // Restore previous values
         subjectInput.value = previousSubject;
         messageInput.value = previousMessage;
 
-        // Optionally remove the template attachment if it's the only one?
-        // For simplicity, we'll keep the files or maybe we should remove specifically the template file
-        // Let's filter out the specific template file
-        selectedFiles = selectedFiles.filter(f => f.name !== 'artemis-sponsorship.pdf');
+        // Clear template files (those with .path)
+        selectedFiles = selectedFiles.filter(f => !f.path);
         displayFiles();
     }
 });
@@ -263,6 +294,7 @@ function handleFiles(files) {
 
     selectedFiles = [...selectedFiles, ...fileArray];
     displayFiles();
+    triggerAutoSave();
 }
 
 // Display selected files
@@ -277,7 +309,7 @@ function displayFiles() {
         const fileItem = document.createElement('div');
         fileItem.className = 'file-item';
 
-        const fileIcon = getFileIcon(file.type);
+        const fileIcon = getFileIcon(file.type || ''); // Handle missing type
         const fileSize = formatFileSize(file.size);
 
         fileItem.innerHTML = `
@@ -300,6 +332,7 @@ function displayFiles() {
             const index = parseInt(e.target.dataset.index);
             selectedFiles.splice(index, 1);
             displayFiles();
+            triggerAutoSave();
         });
     });
 }
