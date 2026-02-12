@@ -139,6 +139,43 @@ app.get('/api/template/:name', (req, res) => {
     }
 });
 
+app.post('/api/template/:name', (req, res) => {
+    const templateName = req.params.name;
+    const { subject, message } = req.body;
+    const fs = require('fs');
+    const path = require('path');
+
+    // Validate input
+    if (!subject || !message) {
+        return res.status(400).json({ error: 'Subject and message are required' });
+    }
+
+    try {
+        const filePath = path.join(__dirname, 'templates', `${templateName}.json`);
+
+        // Read existing template to preserve attachments
+        let template = {};
+        if (fs.existsSync(filePath)) {
+            const fileData = fs.readFileSync(filePath, 'utf8');
+            template = JSON.parse(fileData);
+        }
+
+        // Update fields
+        template.subject = subject;
+        template.message = message;
+        // Ensure name is set if missing
+        if (!template.name) template.name = 'Custom Template';
+
+        // Write back to file
+        fs.writeFileSync(filePath, JSON.stringify(template, null, 2));
+
+        res.json({ success: true, message: 'Template saved successfully' });
+    } catch (error) {
+        console.error('Error saving template:', error);
+        res.status(500).json({ error: 'Failed to save template' });
+    }
+});
+
 app.get('/api/template-attachment/:filename', (req, res) => {
     const filename = req.params.filename;
     const path = require('path');

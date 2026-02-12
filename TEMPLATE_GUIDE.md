@@ -6,13 +6,17 @@
 3. **Review**: The subject, message, and PDF attachment will load automatically.
 4. **Send**: Click "Send Emails".
 
-## Updating the Template
+## Editing the Template (Auto-Save)
+**The template automatically saves your changes!**
 
-### 1. Update the Message/Subject
-Edit this file in your project:
-`templates/artemis-sponsorship.json`
+1. Check "Use Artemis Sponsorship Template"
+2. Edit the **Subject** or **Message** directly in the form
+3. Watch the status indicator:
+   - "Saving..." (while you type)
+   - "Changes saved" (when done)
+4. Your new text is now valid for next time!
 
-### 2. Update the PDF Attachment
+## Updating the PDF Attachment
 The app looks for: `templates/attachments/artemis-sponsorship.pdf`
 
 **To update the PDF:**

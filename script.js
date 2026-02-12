@@ -13,10 +13,65 @@ const fileUploadArea = document.getElementById('fileUploadArea');
 const fileInput = document.getElementById('attachments');
 const fileList = document.getElementById('fileList');
 const templateCheckbox = document.getElementById('templateCheckbox');
+const saveStatus = document.getElementById('saveStatus');
 
 // Template Handling
 let previousSubject = '';
 let previousMessage = '';
+let autoSaveTimer = null;
+
+// Auto-save function
+function triggerAutoSave() {
+    if (!templateCheckbox.checked) return;
+
+    // Clear existing timer
+    if (autoSaveTimer) clearTimeout(autoSaveTimer);
+
+    // Show saving status immediately
+    saveStatus.textContent = 'Saving...';
+    saveStatus.className = 'save-status saving';
+
+    // Set debounce timer (1 second)
+    autoSaveTimer = setTimeout(async () => {
+        const subject = subjectInput.value.trim();
+        const message = messageInput.value.trim();
+
+        if (!subject || !message) return;
+
+        try {
+            const response = await fetch('/api/template/artemis-sponsorship', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ subject, message })
+            });
+
+            if (response.ok) {
+                saveStatus.textContent = 'Changes saved';
+                saveStatus.className = 'save-status saved';
+                // Clear saved status after 3 seconds
+                setTimeout(() => {
+                    if (saveStatus.textContent === 'Changes saved') {
+                        saveStatus.textContent = '';
+                        saveStatus.className = 'save-status';
+                    }
+                }, 3000);
+            } else {
+                saveStatus.textContent = 'Error saving';
+                saveStatus.className = 'save-status error';
+            }
+        } catch (error) {
+            console.error('Auto-save error:', error);
+            saveStatus.textContent = 'Error saving';
+            saveStatus.className = 'save-status error';
+        }
+    }, 1000);
+}
+
+// Add listeners for auto-save
+subjectInput.addEventListener('input', triggerAutoSave);
+messageInput.addEventListener('input', triggerAutoSave);
 
 templateCheckbox.addEventListener('change', async (e) => {
     if (e.target.checked) {

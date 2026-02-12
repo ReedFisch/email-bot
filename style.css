@@ -171,6 +171,22 @@ label {
     transform: rotate(45deg);
 }
 
+.save-status {
+    margin-left: 1rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-style: italic;
+    transition: all 0.3s ease;
+}
+
+.save-status.saving {
+    color: var(--warning-color);
+}
+
+.save-status.saved {
+    color: var(--success-color);
+}
+
 input[type="text"],
 textarea {
     width: 100%;
