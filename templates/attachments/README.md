@@ -1,28 +1,22 @@
 # Template Attachments
 
-## How to Add Your Sponsorship PDF
+This directory contains files that are automatically attached when you select a template.
 
-1. **Add your PDF file here:**
-   - Place your sponsorship PDF in this folder
-   - Name it: `artemis-sponsorship.pdf`
+## Files
 
-2. **Or upload to GitHub:**
-   - Go to your GitHub repository
-   - Navigate to `templates/attachments/`
-   - Click "Add file" → "Upload files"
-   - Upload your `artemis-sponsorship.pdf`
-   - Commit the changes
+- `sponsorship-preview.png` (Default): A placeholder image included with the template.
 
-3. **File will automatically attach** when you check "Use Artemis Sponsorship Template" in the app
+## How to use a PDF as the default attachment
 
-## Supported Files
-- PDFs (recommended for sponsorship packets)
-- Images (PNG, JPEG)
-- Documents (DOCX, TXT)
-- Any file type under 10MB
-
-## Example Files
-Place your sponsorship materials here:
-- `artemis-sponsorship.pdf` - Main sponsorship packet
-- `artemis-team-photo.jpg` - Team photo (optional)
-- `artemis-achievements.pdf` - Achievements document (optional)
+1.  **Delete or rename** the current `sponsorship-preview.png`.
+2.  **Upload or copy** your PDF file into this folder.
+    - Example: `my-sponsorship-packet.pdf`
+3.  **Update the Template Config**:
+    - Open `templates/artemis-sponsorship.json`
+    - Change the `"attachments"` list to point to your new file:
+      ```json
+      "attachments": [
+        "templates/attachments/my-sponsorship-packet.pdf"
+      ]
+      ```
+4.  Commit and push your changes to GitHub to save them permanently.
