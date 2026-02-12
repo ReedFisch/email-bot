@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Bot - Bulk Email Sender</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                    <rect width="32" height="32" rx="8" fill="url(#gradient)" />
+                    <path
+                        d="M8 12L16 18L24 12M8 12V20C8 20.5523 8.44772 21 9 21H23C23.5523 21 24 20.5523 24 20V12M8 12L15.293 6.707C15.6835 6.31647 16.3165 6.31647 16.707 6.707L24 12"
+                        stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                    <defs>
+                        <linearGradient id="gradient" x1="0" y1="0" x2="32" y2="32">
+                            <stop offset="0%" stop-color="#667eea" />
+                            <stop offset="100%" stop-color="#764ba2" />
+                        </linearGradient>
+                    </defs>
+                </svg>
+                <h1>Email Bot</h1>
+            </div>
+            <p class="subtitle">Send personalized emails to multiple recipients</p>
+        </header>
+
+        <main>
+            <form id="emailForm">
+                <div class="form-section">
+                    <label for="emailList">
+                        <span class="label-text">Recipient Email Addresses</span>
+                        <span class="label-hint">One email per line or comma-separated</span>
+                    </label>
+                    <textarea id="emailList" placeholder="john@example.com&#10;jane@example.com&#10;contact@company.com"
+                        rows="6"></textarea>
+                    <div class="email-count">
+                        <span id="emailCount">0 recipients</span>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <label for="subject">
+                        <span class="label-text">Email Subject</span>
+                    </label>
+                    <input type="text" id="subject" placeholder="Enter your email subject" required>
+                </div>
+
+                <div class="form-section">
+                    <label for="message">
+                        <span class="label-text">Email Message</span>
+                        <span class="label-hint">Compose your message (supports HTML)</span>
+                    </label>
+                    <textarea id="message" placeholder="Write your message here..." rows="12" required></textarea>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" id="previewBtn" class="btn btn-secondary">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                        Preview
+                    </button>
+                    <button type="submit" id="sendBtn" class="btn btn-primary">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="22" y1="2" x2="11" y2="13"></line>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                        </svg>
+                        Send Emails
+                    </button>
+                </div>
+            </form>
+
+            <div id="statusArea" class="status-area hidden"></div>
+        </main>
+    </div>
+
+    <div id="previewModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Email Preview</h2>
+                <button id="closeModal" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="preview-field">
+                    <strong>Subject:</strong>
+                    <p id="previewSubject"></p>
+                </div>
+                <div class="preview-field">
+                    <strong>Message:</strong>
+                    <div id="previewMessage"></div>
+                </div>
+                <div class="preview-field">
+                    <strong>Recipients:</strong>
+                    <p id="previewRecipients"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
