@@ -131,11 +131,20 @@ app.get('/api/templates', (req, res) => {
 
 app.get('/api/template/:name', (req, res) => {
     const templateName = req.params.name;
+    const fs = require('fs');
+    const path = require('path');
     try {
-        const template = require(`./templates/${templateName}.json`);
-        res.json(template);
+        const filePath = path.join(__dirname, 'templates', `${templateName}.json`);
+        if (fs.existsSync(filePath)) {
+            const fileData = fs.readFileSync(filePath, 'utf8');
+            const template = JSON.parse(fileData);
+            res.json(template);
+        } else {
+            res.status(404).json({ error: 'Template not found' });
+        }
     } catch (error) {
-        res.status(404).json({ error: 'Template not found' });
+        console.error('Error reading template:', error);
+        res.status(500).json({ error: 'Failed to read template' });
     }
 });
 
