@@ -1,7 +1,16 @@
 const express = require('express');
 const nodemailer = require('nodemailer');
 const cors = require('cors');
+const multer = require('multer');
 require('dotenv').config();
+
+// Configure multer for file uploads (store in memory)
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+        fileSize: 10 * 1024 * 1024 // 10MB limit
+    }
+});
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -23,8 +32,11 @@ function createTransporter() {
 }
 
 // Send emails endpoint
-app.post('/send-emails', async (req, res) => {
-    const { recipients, subject, message } = req.body;
+app.post('/send-emails', upload.array('attachments', 10), async (req, res) => {
+    // Parse recipients from JSON string (FormData sends it as string)
+    const recipients = req.body.recipients ? JSON.parse(req.body.recipients) : [];
+    const { subject, message } = req.body;
+    const files = req.files || [];
 
     // Validation
     if (!recipients || !Array.isArray(recipients) || recipients.length === 0) {
@@ -52,6 +64,13 @@ app.post('/send-emails', async (req, res) => {
         let errorCount = 0;
         const errors = [];
 
+        // Prepare attachments
+        const attachments = files.map(file => ({
+            filename: file.originalname,
+            content: file.buffer,
+            contentType: file.mimetype
+        }));
+
         // Send emails sequentially to avoid rate limiting
         for (const recipient of recipients) {
             try {
@@ -60,7 +79,8 @@ app.post('/send-emails', async (req, res) => {
                     to: recipient,
                     subject: subject,
                     text: message,
-                    html: message.replace(/\n/g, '<br>')
+                    html: message.replace(/\n/g, '<br>'),
+                    attachments: attachments
                 });
                 successCount++;
                 console.log(`✓ Email sent to ${recipient}`);

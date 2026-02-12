@@ -356,6 +356,113 @@ textarea {
     border-radius: 6px;
 }
 
+/* File Upload Area */
+.file-upload-area {
+    border: 2px dashed var(--border-color);
+    border-radius: 8px;
+    padding: 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: var(--bg-tertiary);
+}
+
+.file-upload-area:hover {
+    border-color: #667eea;
+    background: rgba(102, 126, 234, 0.05);
+}
+
+.file-upload-area.drag-over {
+    border-color: #667eea;
+    background: rgba(102, 126, 234, 0.1);
+    transform: scale(1.01);
+}
+
+.file-upload-placeholder {
+    color: var(--text-secondary);
+}
+
+.file-upload-placeholder svg {
+    margin: 0 auto 1rem;
+    color: var(--text-muted);
+}
+
+.file-upload-placeholder p {
+    margin: 0.5rem 0;
+}
+
+.file-upload-placeholder strong {
+    color: #667eea;
+}
+
+.file-upload-hint {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+}
+
+.file-list {
+    margin-top: 1rem;
+    text-align: left;
+}
+
+.file-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem;
+    background: var(--bg-primary);
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+    transition: all 0.2s ease;
+}
+
+.file-item:hover {
+    background: var(--bg-secondary);
+}
+
+.file-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex: 1;
+}
+
+.file-icon {
+    font-size: 1.5rem;
+}
+
+.file-details {
+    flex: 1;
+}
+
+.file-name {
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+}
+
+.file-size {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+}
+
+.remove-file {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    font-size: 1.25rem;
+    line-height: 1;
+}
+
+.remove-file:hover {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--error-color);
+}
+
 /* Progress indicator */
 .progress-bar {
     width: 100%;

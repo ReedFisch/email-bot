@@ -61,6 +61,27 @@
                     <textarea id="message" placeholder="Write your message here..." rows="12" required></textarea>
                 </div>
 
+                <div class="form-section">
+                    <label for="attachments">
+                        <span class="label-text">Attachments</span>
+                        <span class="label-hint">Optional - Images, PDFs, documents (Max 10MB per file)</span>
+                    </label>
+                    <div class="file-upload-area" id="fileUploadArea">
+                        <input type="file" id="attachments" multiple accept="*/*" style="display: none;">
+                        <div class="file-upload-placeholder">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="17 8 12 3 7 8"></polyline>
+                                <line x1="12" y1="3" x2="12" y2="15"></line>
+                            </svg>
+                            <p><strong>Click to upload</strong> or drag and drop</p>
+                            <p class="file-upload-hint">Images, PDFs, documents, etc.</p>
+                        </div>
+                        <div id="fileList" class="file-list"></div>
+                    </div>
+                </div>
+
                 <div class="form-actions">
                     <button type="button" id="previewBtn" class="btn btn-secondary">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"

@@ -9,6 +9,12 @@ const sendBtn = document.getElementById('sendBtn');
 const statusArea = document.getElementById('statusArea');
 const previewModal = document.getElementById('previewModal');
 const closeModal = document.getElementById('closeModal');
+const fileUploadArea = document.getElementById('fileUploadArea');
+const fileInput = document.getElementById('attachments');
+const fileList = document.getElementById('fileList');
+
+// Selected files storage
+let selectedFiles = [];
 
 // Parse email list
 function parseEmails(text) {
@@ -92,6 +98,106 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
+// File Upload Handlers
+fileUploadArea.addEventListener('click', () => {
+    fileInput.click();
+});
+
+fileInput.addEventListener('change', (e) => {
+    handleFiles(e.target.files);
+});
+
+// Drag and drop handlers
+fileUploadArea.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    fileUploadArea.classList.add('drag-over');
+});
+
+fileUploadArea.addEventListener('dragleave', () => {
+    fileUploadArea.classList.remove('drag-over');
+});
+
+fileUploadArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    fileUploadArea.classList.remove('drag-over');
+    handleFiles(e.dataTransfer.files);
+});
+
+// Handle file selection
+function handleFiles(files) {
+    const fileArray = Array.from(files);
+
+    // Check file sizes
+    const oversizedFiles = fileArray.filter(f => f.size > 10 * 1024 * 1024);
+    if (oversizedFiles.length > 0) {
+        showStatus(`Some files exceed the 10MB limit: ${oversizedFiles.map(f => f.name).join(', ')}`, 'error');
+        return;
+    }
+
+    selectedFiles = [...selectedFiles, ...fileArray];
+    displayFiles();
+}
+
+// Display selected files
+function displayFiles() {
+    fileList.innerHTML = '';
+
+    if (selectedFiles.length === 0) {
+        return;
+    }
+
+    selectedFiles.forEach((file, index) => {
+        const fileItem = document.createElement('div');
+        fileItem.className = 'file-item';
+
+        const fileIcon = getFileIcon(file.type);
+        const fileSize = formatFileSize(file.size);
+
+        fileItem.innerHTML = `
+            <div class="file-info">
+                <span class="file-icon">${fileIcon}</span>
+                <div class="file-details">
+                    <div class="file-name">${file.name}</div>
+                    <div class="file-size">${fileSize}</div>
+                </div>
+            </div>
+            <button type="button" class="remove-file" data-index="${index}">×</button>
+        `;
+
+        fileList.appendChild(fileItem);
+    });
+
+    // Add remove file listeners
+    document.querySelectorAll('.remove-file').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const index = parseInt(e.target.dataset.index);
+            selectedFiles.splice(index, 1);
+            displayFiles();
+        });
+    });
+}
+
+// Get file icon based on type
+function getFileIcon(type) {
+    if (type.startsWith('image/')) return '🖼️';
+    if (type.startsWith('video/')) return '🎥';
+    if (type.startsWith('audio/')) return '🎵';
+    if (type.includes('pdf')) return '📄';
+    if (type.includes('word') || type.includes('document')) return '📝';
+    if (type.includes('excel') || type.includes('spreadsheet')) return '📊';
+    if (type.includes('zip') || type.includes('archive')) return '📦';
+    return '📎';
+}
+
+// Format file size
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+}
+
 // Form submission handler
 emailForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -122,16 +228,20 @@ emailForm.addEventListener('submit', async (e) => {
     `;
 
     try {
+        // Create FormData for file uploads
+        const formData = new FormData();
+        formData.append('recipients', JSON.stringify(emails));
+        formData.append('subject', subject);
+        formData.append('message', message);
+
+        // Add files
+        selectedFiles.forEach(file => {
+            formData.append('attachments', file);
+        });
+
         const response = await fetch('http://localhost:3000/send-emails', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                recipients: emails,
-                subject: subject,
-                message: message
-            })
+            body: formData
         });
 
         const result = await response.json();
@@ -145,6 +255,9 @@ emailForm.addEventListener('submit', async (e) => {
                 subjectInput.value = '';
                 messageInput.value = '';
                 emailCountDisplay.textContent = '0 recipients';
+                selectedFiles = [];
+                displayFiles();
+                fileInput.value = '';
             }, 2000);
         } else {
             showStatus(`✗ Error: ${result.error || 'Failed to send emails'}`, 'error');
