@@ -399,7 +399,7 @@ emailForm.addEventListener('submit', async (e) => {
             formData.append('attachments', file);
         });
 
-        const response = await fetch('http://localhost:3000/send-emails', {
+        const response = await fetch('/send-emails', {
             method: 'POST',
             body: formData
         });
@@ -424,7 +424,7 @@ emailForm.addEventListener('submit', async (e) => {
         }
     } catch (error) {
         console.error('Error sending emails:', error);
-        showStatus(`✗ Error: ${error.message}. Make sure the server is running on port 3000.`, 'error');
+        showStatus(`✗ Error: ${error.message}. Please check your connection.`, 'error');
     } finally {
         // Re-enable button
         sendBtn.disabled = false;
