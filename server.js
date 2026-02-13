@@ -108,8 +108,8 @@ app.post('/send-emails', upload.array('attachments', 10), async (req, res) => {
             contentType: file.mimetype
         }));
 
-        // Send emails sequentially to avoid rate limiting
-        for (const recipient of recipients) {
+        // Helper function to send a single email
+        const sendSingleEmail = async (recipient) => {
             try {
                 await transporter.sendMail({
                     from: `"${process.env.EMAIL_FROM_NAME || 'Email Bot'}" <${process.env.EMAIL_USER}>`,
@@ -126,10 +126,17 @@ app.post('/send-emails', upload.array('attachments', 10), async (req, res) => {
                 errors.push({ recipient, error: error.message });
                 console.error(`✗ Failed to send to ${recipient}:`, error.message);
             }
+        };
 
-            // Add small delay between emails to avoid rate limiting
-            if (recipients.indexOf(recipient) < recipients.length - 1) {
-                await new Promise(resolve => setTimeout(resolve, 500));
+        // Send in batches to improve speed while respecting rate limits
+        const BATCH_SIZE = 3;
+        for (let i = 0; i < recipients.length; i += BATCH_SIZE) {
+            const batch = recipients.slice(i, i + BATCH_SIZE);
+            await Promise.all(batch.map(recipient => sendSingleEmail(recipient)));
+
+            // Small delay between batches if there are more emails
+            if (i + BATCH_SIZE < recipients.length) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
             }
         }
 
