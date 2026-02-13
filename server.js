@@ -4,6 +4,43 @@ const cors = require('cors');
 const multer = require('multer');
 require('dotenv').config();
 
+const mongoose = require('mongoose');
+
+// MongoDB Connection
+let isMongoConnected = false;
+const connectDB = async () => {
+    if (!process.env.MONGODB_URI) {
+        console.log('📝 Using local file system (MONGODB_URI not set)');
+        return;
+    }
+    try {
+        await mongoose.connect(process.env.MONGODB_URI);
+        isMongoConnected = true;
+        console.log('🍃 Connected to MongoDB');
+    } catch (err) {
+        console.error('❌ MongoDB Connection Error:', err);
+    }
+};
+connectDB();
+
+// Schema
+const templateSchema = new mongoose.Schema({
+    name: { type: String, required: true, unique: true },
+    subject: String,
+    message: String,
+    attachments: [{
+        filename: String,
+        contentType: String,
+        data: Buffer
+    }]
+});
+let Template;
+try {
+    Template = mongoose.model('Template');
+} catch {
+    Template = mongoose.model('Template', templateSchema);
+}
+
 // Configure multer for file uploads (store in memory)
 const upload = multer({
     storage: multer.memoryStorage(),
@@ -129,10 +166,29 @@ app.get('/api/templates', (req, res) => {
     ]);
 });
 
-app.get('/api/template/:name', (req, res) => {
+app.get('/api/template/:name', async (req, res) => {
     const templateName = req.params.name;
     const fs = require('fs');
     const path = require('path');
+
+    // Try MongoDB first
+    if (isMongoConnected) {
+        try {
+            const template = await Template.findOne({ name: templateName });
+            if (template) {
+                // Return structure matching local JSON
+                return res.json({
+                    subject: template.subject,
+                    message: template.message,
+                    attachments: template.attachments.map(a => `templates/attachments/${a.filename}`)
+                });
+            }
+        } catch (err) {
+            console.error('DB Read Error:', err);
+        }
+    }
+
+    // Fallback to local file
     try {
         const filePath = path.join(__dirname, 'templates', `${templateName}.json`);
         if (fs.existsSync(filePath)) {
@@ -148,79 +204,28 @@ app.get('/api/template/:name', (req, res) => {
     }
 });
 
-app.post('/api/template/:name', upload.array('newAttachments', 10), (req, res) => {
-    const templateName = req.params.name;
-    const { subject, message } = req.body;
-    let existingAttachments = req.body.existingAttachments || [];
-    const newFiles = req.files || [];
-    const fs = require('fs');
-    const path = require('path');
 
-    // Parse existingAttachments if it came as a JSON string or single string
-    if (typeof existingAttachments === 'string') {
-        try {
-            existingAttachments = JSON.parse(existingAttachments);
-        } catch (e) {
-            existingAttachments = [existingAttachments];
-        }
-    }
-    if (!Array.isArray(existingAttachments)) existingAttachments = [];
-
-    // Validate input
-    if (!subject || !message) {
-        return res.status(400).json({ error: 'Subject and message are required' });
-    }
-
-    try {
-        const filePath = path.join(__dirname, 'templates', `${templateName}.json`);
-        const attachmentsDir = path.join(__dirname, 'templates', 'attachments');
-
-        // Ensure attachments directory exists
-        if (!fs.existsSync(attachmentsDir)) {
-            fs.mkdirSync(attachmentsDir, { recursive: true });
-        }
-
-        // Read existing template
-        let template = {};
-        if (fs.existsSync(filePath)) {
-            const fileData = fs.readFileSync(filePath, 'utf8');
-            template = JSON.parse(fileData);
-        }
-
-        // Process new files
-        const savedNewAttachments = newFiles.map(file => {
-            const targetPath = path.join(attachmentsDir, file.originalname);
-            fs.writeFileSync(targetPath, file.buffer);
-            return `templates/attachments/${file.originalname}`;
-        });
-
-        // Combine attachments (existing + new)
-        // Filter existingAttachments to only include valid relative paths to prevent security issues
-        const validExisting = existingAttachments.filter(p => p.startsWith('templates/attachments/'));
-
-        template.subject = subject;
-        template.message = message;
-        template.attachments = [...validExisting, ...savedNewAttachments];
-
-        // Ensure name is set if missing
-        if (!template.name) template.name = 'Custom Template';
-
-        // Write back to file
-        fs.writeFileSync(filePath, JSON.stringify(template, null, 2));
-
-        res.json({
-            success: true,
-            message: 'Template and attachments saved successfully',
-            attachments: template.attachments
-        });
-    } catch (error) {
-        console.error('Error saving template:', error);
-        res.status(500).json({ error: 'Failed to save template' });
-    }
-});
-
-app.get('/api/template-attachment/:filename', (req, res) => {
+app.get('/api/template-attachment/:filename', async (req, res) => {
     const filename = req.params.filename;
+
+    // Try MongoDB
+    if (isMongoConnected) {
+        try {
+            // Find any template containing this attachment
+            const template = await Template.findOne({ 'attachments.filename': filename });
+            if (template) {
+                const attachment = template.attachments.find(a => a.filename === filename);
+                if (attachment) {
+                    res.set('Content-Type', attachment.contentType);
+                    return res.send(attachment.data);
+                }
+            }
+        } catch (err) {
+            console.error('DB Attachment Read Error:', err);
+        }
+    }
+
+    // Fallback to local file
     const path = require('path');
     const fs = require('fs');
     const filePath = path.join(__dirname, 'templates', 'attachments', filename);
@@ -254,5 +259,99 @@ app.listen(PORT, () => {
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
         console.log('⚠️  WARNING: Email credentials not configured!');
         console.log('   Please create a .env file with your email credentials.\n');
+    }
+});
+
+app.post('/api/template/:name', upload.array('newAttachments', 10), async (req, res) => {
+    const templateName = req.params.name;
+    const { subject, message } = req.body;
+    let existingAttachments = req.body.existingAttachments || [];
+    const newFiles = req.files || [];
+    const fs = require('fs');
+    const path = require('path');
+
+    // Parse existingAttachments
+    if (typeof existingAttachments === 'string') {
+        try { existingAttachments = JSON.parse(existingAttachments); } 
+        catch (e) { existingAttachments = [existingAttachments]; }
+    }
+    if (!Array.isArray(existingAttachments)) existingAttachments = [];
+
+    if (!subject || !message) {
+        return res.status(400).json({ error: 'Subject and message are required' });
+    }
+
+    // MongoDB Save
+    if (isMongoConnected) {
+        try {
+            let template = await Template.findOne({ name: templateName });
+            if (!template) {
+                template = new Template({ name: templateName, attachments: [] });
+            }
+
+            template.subject = subject;
+            template.message = message;
+
+            // Keep existing
+            const keepFilenames = existingAttachments.map(p => p.split('/').pop());
+            template.attachments = template.attachments.filter(a => keepFilenames.includes(a.filename));
+
+            // Add new
+            for (const file of newFiles) {
+                template.attachments.push({
+                    filename: file.originalname,
+                    contentType: file.mimetype,
+                    data: file.buffer
+                });
+            }
+
+            await template.save();
+
+            return res.json({
+                success: true,
+                message: 'Template saved to Database',
+                attachments: template.attachments.map(a => `templates/attachments/${a.filename}`)
+            });
+        } catch (err) {
+            console.error('DB Write Error:', err);
+            return res.status(500).json({ error: 'Database write failed' });
+        }
+    }
+
+    // Local Fallback
+    try {
+        const filePath = path.join(__dirname, 'templates', `${templateName}.json`);
+        const attachmentsDir = path.join(__dirname, 'templates', 'attachments');
+
+        if (!fs.existsSync(attachmentsDir)) fs.mkdirSync(attachmentsDir, { recursive: true });
+
+        let template = {};
+        if (fs.existsSync(filePath)) {
+            template = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        }
+
+        const savedNewAttachments = newFiles.map(file => {
+            const targetPath = path.join(attachmentsDir, file.originalname);
+            fs.writeFileSync(targetPath, file.buffer);
+            return `templates/attachments/${file.originalname}`;
+        });
+
+        const validExisting = existingAttachments.filter(p => p.startsWith('templates/attachments/'));
+        
+        template.subject = subject;
+        template.message = message;
+        template.attachments = [...validExisting, ...savedNewAttachments];
+        if (!template.name) template.name = 'Custom Template';
+
+        fs.writeFileSync(filePath, JSON.stringify(template, null, 2));
+
+        res.json({
+            success: true,
+            message: 'Template and attachments saved locally',
+            attachments: template.attachments
+        });
+    } catch (error) {
+        console.error('Error saving template:', error);
+        res.status(500).json({ error: 'Failed to save template' });
     }
 });
