@@ -243,6 +243,7 @@ app.get('/health', (req, res) => {
     res.json({
         status: 'ok',
         configured: isConfigured,
+        mongodb: isMongoConnected,
         message: isConfigured
             ? 'Email service is configured'
             : 'Email credentials not set. Please configure .env file.'
@@ -272,7 +273,7 @@ app.post('/api/template/:name', upload.array('newAttachments', 10), async (req, 
 
     // Parse existingAttachments
     if (typeof existingAttachments === 'string') {
-        try { existingAttachments = JSON.parse(existingAttachments); } 
+        try { existingAttachments = JSON.parse(existingAttachments); }
         catch (e) { existingAttachments = [existingAttachments]; }
     }
     if (!Array.isArray(existingAttachments)) existingAttachments = [];
@@ -337,7 +338,7 @@ app.post('/api/template/:name', upload.array('newAttachments', 10), async (req, 
         });
 
         const validExisting = existingAttachments.filter(p => p.startsWith('templates/attachments/'));
-        
+
         template.subject = subject;
         template.message = message;
         template.attachments = [...validExisting, ...savedNewAttachments];

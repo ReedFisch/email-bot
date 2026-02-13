@@ -41,3 +41,14 @@ We will use **MongoDB Atlas** (it's free and easy).
 Render usually restarts automatically when you change variables. If not, go to **"Manual Deploy"** -> **"Deploy latest commit"**.
 
 ✅ **Done!** Your templates will now be saved to the database and will persist forever!
+
+## Forgot IP Access? (Fixing Connection Errors)
+If Render can't connect, you likely skipped the "Allow Access from Anywhere" step.
+
+1.  Log in to **MongoDB Atlas**.
+2.  In the left menu, click **"Network Access"**.
+3.  Click the **"Add IP Address"** button (top right).
+4.  Click **"Allow Access from Anywhere"** (or enter `0.0.0.0/0`).
+5.  Click **"Confirm"**.
+6.  Wait ~1-2 minutes for it to apply.
+7.  Restart your service on Render (**Manual Deploy** -> **Restart Service**).
