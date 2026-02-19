@@ -15,6 +15,18 @@ const fileList = document.getElementById('fileList');
 const templateCheckbox = document.getElementById('templateCheckbox');
 const saveStatus = document.getElementById('saveStatus');
 
+// Detect API Base URL
+// If on Render or Node server (port 3000), use relative path.
+// If on Live Server or file://, point to localhost:3000.
+let API_BASE = '';
+const host = window.location.hostname;
+const port = window.location.port;
+if (window.location.protocol === 'file:' ||
+    ((host === 'localhost' || host === '127.0.0.1') && port !== '3000')) {
+    API_BASE = 'http://localhost:3000';
+    console.log('Using Development API Base:', API_BASE);
+}
+
 // Template Handling
 let previousSubject = '';
 let previousMessage = '';
@@ -51,7 +63,7 @@ function triggerAutoSave() {
                 }
             });
 
-            const response = await fetch('/api/template/artemis-sponsorship', {
+            const response = await fetch(`${API_BASE}/api/template/artemis-sponsorship`, {
                 method: 'POST',
                 body: formData
             });
@@ -115,7 +127,8 @@ templateCheckbox.addEventListener('change', async (e) => {
             messageInput.disabled = true;
 
             // Fetch template data
-            const response = await fetch('/api/template/artemis-sponsorship');
+            // Fetch template data
+            const response = await fetch(`${API_BASE}/api/template/artemis-sponsorship`);
             if (!response.ok) throw new Error('Failed to load template');
 
             const template = await response.json();
@@ -135,7 +148,7 @@ templateCheckbox.addEventListener('change', async (e) => {
                 for (const attachmentPath of template.attachments) {
                     const filename = attachmentPath.split('/').pop();
                     try {
-                        const fileResponse = await fetch(`/api/template-attachment/${filename}`);
+                        const fileResponse = await fetch(`${API_BASE}/api/template-attachment/${filename}`);
                         if (fileResponse.ok) {
                             const blob = await fileResponse.blob();
                             // Create File object but mark with path so we know it's existing
@@ -399,7 +412,7 @@ emailForm.addEventListener('submit', async (e) => {
             formData.append('attachments', file);
         });
 
-        const response = await fetch('/send-emails', {
+        const response = await fetch(`${API_BASE}/send-emails`, {
             method: 'POST',
             body: formData
         });
