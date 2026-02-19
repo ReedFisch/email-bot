@@ -2,6 +2,8 @@ const express = require('express');
 const nodemailer = require('nodemailer');
 const cors = require('cors');
 const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 require('dotenv').config();
 
 const mongoose = require('mongoose');
@@ -70,10 +72,15 @@ function createTransporter() {
 
 // Send emails endpoint
 app.post('/send-emails', upload.array('attachments', 10), async (req, res) => {
-    // Parse recipients from JSON string (FormData sends it as string)
     const recipients = req.body.recipients ? JSON.parse(req.body.recipients) : [];
     const { subject, message } = req.body;
-    const files = req.files || [];
+    const newFiles = req.files || [];
+    let existingAttachments = req.body.existingAttachments || [];
+
+    // Ensure existingAttachments is an array (it might be a string if only one file)
+    if (typeof existingAttachments === 'string') {
+        existingAttachments = [existingAttachments];
+    }
 
     // Validation
     if (!recipients || !Array.isArray(recipients) || recipients.length === 0) {
@@ -102,11 +109,59 @@ app.post('/send-emails', upload.array('attachments', 10), async (req, res) => {
         const errors = [];
 
         // Prepare attachments
-        const attachments = files.map(file => ({
-            filename: file.originalname,
-            content: file.buffer,
-            contentType: file.mimetype
-        }));
+        const attachments = [];
+
+        // Add new uploaded files
+        newFiles.forEach(file => {
+            attachments.push({
+                filename: file.originalname,
+                content: file.buffer,
+                contentType: file.mimetype
+            });
+        });
+
+        // Add existing template files
+        for (const filePath of existingAttachments) {
+            const filename = path.basename(filePath);
+
+            // Try to fetch from DB first (if using MongoDB)
+            if (isMongoConnected) {
+                // We don't have easy direct access to file content here without querying.
+                // Ideally we should query by filename. But template schema has attachments array.
+                // For now, let's rely on reading from file system if path exists, OR fetch from DB specific endpoint logic re-use?
+                // Actually simpler: if path is "templates/attachments/...", read it from FS if exists.
+                // BUT in production with MongoDB, files might not be on FS.
+                // The "path" from frontend is literally "templates/attachments/filename.pdf".
+
+                // If MongoDB is connected, we should try to find this file in any template? Or just query the file?
+                // Our schema stores file buffer in the Template document.
+                // This is tricky. The "path" is virtual for MongoDB mode.
+
+                // Strategy: Try to find a template that contains this filename in its attachments.
+                const templateWithFile = await Template.findOne({ 'attachments.filename': filename });
+                if (templateWithFile) {
+                    const attachmentData = templateWithFile.attachments.find(a => a.filename === filename);
+                    if (attachmentData) {
+                        attachments.push({
+                            filename: attachmentData.filename,
+                            content: attachmentData.data,
+                            contentType: attachmentData.contentType
+                        });
+                        continue;
+                    }
+                }
+            }
+
+            // Fallback to local file system
+            if (fs.existsSync(filePath)) {
+                attachments.push({
+                    filename: filename,
+                    path: filePath // Nodemailer handles paths
+                });
+            } else {
+                console.warn(`Attachment not found: ${filePath}`);
+            }
+        }
 
         // Helper function to send a single email
         const sendSingleEmail = async (recipient) => {

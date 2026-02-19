@@ -409,13 +409,25 @@ emailForm.addEventListener('submit', async (e) => {
 
         // Add files
         selectedFiles.forEach(file => {
-            formData.append('attachments', file);
+            if (file.path) {
+                // If it's a template file (already on server), pass the path
+                formData.append('existingAttachments', file.path);
+            } else {
+                // If it's a new upload, pass the file object
+                formData.append('attachments', file);
+            }
         });
+
+        // Add timeout to fetch to prevent infinite hanging
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
 
         const response = await fetch(`${API_BASE}/send-emails`, {
             method: 'POST',
-            body: formData
+            body: formData,
+            signal: controller.signal
         });
+        clearTimeout(timeoutId);
 
         const result = await response.json();
 
