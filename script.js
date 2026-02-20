@@ -132,7 +132,13 @@ function setCheck(el, state, label) {
     const icon = el.querySelector('.check-icon');
     icon.className = `check-icon ${state}`;
     icon.textContent = state === 'ok' ? '✓' : state === 'fail' ? '✗' : state === 'warn' ? '!' : '○';
-    el.childNodes[1].textContent = ' ' + label;
+    let labelSpan = el.querySelector('.check-label');
+    if (!labelSpan) {
+        labelSpan = document.createElement('span');
+        labelSpan.className = 'check-label';
+        el.appendChild(labelSpan);
+    }
+    labelSpan.textContent = label;
 }
 
 // Run on input
